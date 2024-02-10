@@ -18,12 +18,12 @@ const scene = new THREE.Scene()
  * Galaxy
  */
 const parameters = {}
-parameters.count = 100000
-parameters.size = 0.01
+parameters.count = 200000
+parameters.size = 0.005
 parameters.radius = 5
 parameters.branches = 3
 parameters.spin = 1
-parameters.randomness = 0.3
+parameters.randomness = 0.5
 parameters.randomnessPower = 3
 parameters.insideColor = '#ff6030'
 parameters.outsideColor = '#1b3984'
@@ -49,6 +49,7 @@ const generateGalaxy = () => {
     // 3 values for colors because we use "RGB"
     const colors = new Float32Array(parameters.count * 3)
     const scales = new Float32Array(parameters.count * 1)
+    const randomness = new Float32Array(parameters.count * 3)
 
     const colorInside = new THREE.Color(parameters.insideColor)
     const colorOutside = new THREE.Color(parameters.outsideColor)
@@ -59,9 +60,12 @@ const generateGalaxy = () => {
 
         // Position
         const radius = Math.random() * parameters.radius
-        const spinAngle = radius * parameters.spin
         const branchAngle =
             ((i % parameters.branches) / parameters.branches) * Math.PI * 2
+
+        positions[i3 + 0] = Math.cos(branchAngle) * radius
+        positions[i3 + 1] = 0
+        positions[i3 + 2] = Math.sin(branchAngle) * radius
 
         //randomness (can't use math.pow on negative value so we use it on positive value, then randomly invert the value by multiplying by -1)
         const randomX =
@@ -80,9 +84,9 @@ const generateGalaxy = () => {
             parameters.randomness *
             radius
 
-        positions[i3 + 0] = Math.cos(branchAngle + spinAngle) * radius + randomX
-        positions[i3 + 1] = randomY
-        positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ
+        randomness[i3 + 0] = randomX
+        randomness[i3 + 1] = randomY
+        randomness[i3 + 2] = randomZ
 
         // Colors
         const mixedColor = colorInside.clone()
@@ -99,6 +103,10 @@ const generateGalaxy = () => {
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     geometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1))
+    geometry.setAttribute(
+        'aRandomness',
+        new THREE.BufferAttribute(randomness, 3)
+    )
 
     /**
      * Material
@@ -109,16 +117,31 @@ const generateGalaxy = () => {
         vertexColors: true,
         uniforms: {
             uSize: { value: 30 * renderer.getPixelRatio() },
+            uTime: { value: 0 },
         },
         vertexShader: `
         uniform float uSize;
+        uniform float uTime;
         attribute float aScale;
+        attribute vec3 aRandomness;
         varying vec3 vColor;
         
         void main() {
 
             // Position
             vec4 modelPosition = modelMatrix * vec4(position, 1.0);
+
+                // Spin (if model not at the center, need some tweaks)
+                float angle = atan(modelPosition.x, modelPosition.z);
+                float distanceToCenter = length(modelPosition.xz);
+                float angleOffset = (1.0 / distanceToCenter) * uTime * 0.2;
+                angle += angleOffset;
+                modelPosition.x = cos(angle) * distanceToCenter;
+                modelPosition.z = sin(angle) * distanceToCenter;
+
+                // Randomness
+                modelPosition.xyz += aRandomness;
+
             vec4 viewPosition = viewMatrix * modelPosition;
             vec4 projectedPosition = projectionMatrix * viewPosition;
             gl_Position = projectedPosition;
@@ -267,6 +290,9 @@ const clock = new THREE.Clock()
 
 const tick = () => {
     const elapsedTime = clock.getElapsedTime()
+
+    // Update material
+    material.uniforms.uTime.value = elapsedTime
 
     // Update controls
     controls.update()
