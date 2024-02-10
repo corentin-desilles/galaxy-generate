@@ -25,6 +25,8 @@ parameters.branches = 3
 parameters.spin = 1
 parameters.randomness = 0.2
 parameters.randomnessPower = 3
+parameters.insideColor = '#ff6030'
+parameters.outsideColor = '#1b3984'
 
 let geometry = null
 let material = null
@@ -44,11 +46,16 @@ const generateGalaxy = () => {
     geometry = new THREE.BufferGeometry()
 
     const positions = new Float32Array(parameters.count * 3)
+    // 3 values for colors because we use "RGB"
+    const colors = new Float32Array(parameters.count * 3)
+    const colorInside = new THREE.Color(parameters.insideColor)
+    const colorOutside = new THREE.Color(parameters.outsideColor)
 
+    // Loop that create each particle
     for (let i = 0; i < parameters.count; i++) {
         const i3 = i * 3
 
-        //position the particles on the branches
+        // Position
         const radius = Math.random() * parameters.radius
         const spinAngle = radius * parameters.spin
         const branchAngle =
@@ -74,9 +81,18 @@ const generateGalaxy = () => {
         positions[i3 + 0] = Math.cos(branchAngle + spinAngle) * radius + randomX
         positions[i3 + 1] = randomY
         positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ
+
+        // Colors
+        const mixedColor = colorInside.clone()
+        mixedColor.lerp(colorOutside, radius / parameters.radius)
+
+        colors[i3 + 0] = mixedColor.r
+        colors[i3 + 1] = mixedColor.g
+        colors[i3 + 2] = mixedColor.b
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 
     /**
      * Material
@@ -86,6 +102,7 @@ const generateGalaxy = () => {
         sizeAttenuation: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,
+        vertexColors: true,
     })
 
     /**
@@ -132,6 +149,8 @@ gui.add(parameters, 'randomnessPower')
     .max(10)
     .step(0.001)
     .onFinishChange(generateGalaxy)
+gui.addColor(parameters, 'insideColor').onFinishChange(generateGalaxy)
+gui.addColor(parameters, 'outsideColor').onFinishChange(generateGalaxy)
 
 /**
  * Sizes
