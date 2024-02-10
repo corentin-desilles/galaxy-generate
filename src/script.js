@@ -23,6 +23,8 @@ parameters.size = 0.01
 parameters.radius = 5
 parameters.branches = 3
 parameters.spin = 1
+parameters.randomness = 0.2
+parameters.randomnessPower = 3
 
 let geometry = null
 let material = null
@@ -52,9 +54,26 @@ const generateGalaxy = () => {
         const branchAngle =
             ((i % parameters.branches) / parameters.branches) * Math.PI * 2
 
-        positions[i3 + 0] = Math.cos(branchAngle + spinAngle) * radius
-        positions[i3 + 1] = 0
-        positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius
+        //randomness (can't use math.pow on negative value so we use it on positive value, then randomly invert the value by multiplying by -1)
+        const randomX =
+            Math.pow(Math.random(), parameters.randomnessPower) *
+            (Math.random() < 0.5 ? 1 : -1) *
+            parameters.randomness *
+            radius
+        const randomY =
+            Math.pow(Math.random(), parameters.randomnessPower) *
+            (Math.random() < 0.5 ? 1 : -1) *
+            parameters.randomness *
+            radius
+        const randomZ =
+            Math.pow(Math.random(), parameters.randomnessPower) *
+            (Math.random() < 0.5 ? 1 : -1) *
+            parameters.randomness *
+            radius
+
+        positions[i3 + 0] = Math.cos(branchAngle + spinAngle) * radius + randomX
+        positions[i3 + 1] = randomY
+        positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ
     }
 
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
@@ -101,6 +120,16 @@ gui.add(parameters, 'branches')
 gui.add(parameters, 'spin')
     .min(-5)
     .max(5)
+    .step(0.001)
+    .onFinishChange(generateGalaxy)
+gui.add(parameters, 'randomness')
+    .min(0)
+    .max(2)
+    .step(0.001)
+    .onFinishChange(generateGalaxy)
+gui.add(parameters, 'randomnessPower')
+    .min(1)
+    .max(10)
     .step(0.001)
     .onFinishChange(generateGalaxy)
 
